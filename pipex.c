@@ -6,7 +6,7 @@
 /*   By: ekordi <ekordi@student.42heilbronn.de>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/04 11:34:00 by ekordi            #+#    #+#             */
-/*   Updated: 2023/10/05 20:08:02 by ekordi           ###   ########.fr       */
+/*   Updated: 2023/10/13 15:54:04 by ekordi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,15 +42,17 @@ char	*cmd_path(char *cmd, char **envp)
 		temp = ft_strjoin(path, cmd);
 		if (access(temp, X_OK) == 0)
 		{
-			free_arrayofstrings(paths);
+			// free_arrayofstrings(paths);
+			// free(path);
 			return (temp);
 		}
-		free(temp);
+		// free(temp);
+		// free(path);
 		i++;
 	}
 	ft_putstr_fd("Command not found\n", 2);
 	free_arrayofstrings(paths);
-	exit(127);
+	exit(1);
 }
 
 int	child(char **argv, int *p_fd, char **envp)
@@ -60,7 +62,10 @@ int	child(char **argv, int *p_fd, char **envp)
 	int		fd;
 
 	cmd = ft_split(argv[2], ' ');
-	cmdpath = cmd_path(cmd[0], envp);
+	if (access(cmd[0], X_OK) == 0)
+		cmdpath = cmd[0];
+	else
+		cmdpath = cmd_path(cmd[0], envp);
 	close(p_fd[0]);
 	fd = open(argv[1], O_RDONLY, 0777);
 	if (fd == -1)
@@ -73,10 +78,11 @@ int	child(char **argv, int *p_fd, char **envp)
 	dup2(p_fd[1], 1);
 	close(p_fd[1]);
 	execve(cmdpath, cmd, envp);
+	// free_arrayofstrings(cmd);
 	return (4);
 }
 
-void	parent(char **argv, int *p_fd, char **envp)
+void	parent(char **argv, int *p_fd, char **envp, int *status)
 {
 	char	**cmd;
 	char	*cmdpath;
@@ -89,27 +95,35 @@ void	parent(char **argv, int *p_fd, char **envp)
 		perror("fork");
 		exit(1);
 	}
-	cmd = ft_split(argv[3], ' ');
-	cmdpath = cmd_path(cmd[0], envp);
-	fd = open(argv[4], O_WRONLY | O_CREAT | O_TRUNC, 0777);
 	if (pid == 0)
 	{
+		cmd = ft_split(argv[3], ' ');
+		if (access(cmd[0], X_OK) == 0)
+			cmdpath = cmd[0];
+		else
+			cmdpath = cmd_path(cmd[0], envp);
+		fd = open(argv[4], O_WRONLY | O_CREAT | O_TRUNC, 0777);
 		close(p_fd[1]);
 		dup2(fd, 1);
 		close(fd);
 		dup2(p_fd[0], 0);
 		close(p_fd[0]);
 		execve(cmdpath, cmd, envp);
+		// free_arrayofstrings(cmd);
 	}
 	close(p_fd[1]);
-	waitpid(pid, NULL, 0);
+	waitpid(pid, status, 0);
 }
 
 int	main(int argc, char **argv, char **envp)
 {
 	int	p_fd[2];
 	int	pid1;
+	int	status;
+	int	child_status;
 
+	child_status = 0;
+	status = 0;
 	if (argc != 5)
 	{
 		printf("Usage: <infile> <cmd1> <cmd2> <outfile>\n");
@@ -128,7 +142,10 @@ int	main(int argc, char **argv, char **envp)
 	}
 	if (pid1 == 0)
 		child(argv, p_fd, envp);
-	parent(argv, p_fd, envp);
-	waitpid(pid1, NULL, 0);
+	waitpid(pid1, &status, 0);
+	parent(argv, p_fd, envp, &child_status);
+	if (status != 0 || child_status != 0)
+		exit(1);
+	system("leaks pipex");
 	return (0);
 }
