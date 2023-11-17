@@ -1,24 +1,25 @@
-NAME	= pipex
-SRCS	= pipex.c
-CC		= cc
-RM		= rm -f
-CFLAGS	= -Wall -Wextra -Werror -fsanitize=address -g
-LIBFTDIR = My_C_Library
-LIBFT	= $(LIBFTDIR)/libft.a
+NAME = philo
+SRC = src/actions.c src/init.c src/philo.c src/routine.c src/utils.c src/utils1.c
+CFLAGS = -Wall -Wextra -Werror -pthread -g #-fsanitize=thread -g
+CC = cc
+RM = rm -f
 
-all:	$(NAME)
+OBJ := $(SRC:.c=.o)
 
-$(NAME): $(LIBFT)
-	$(CC) $(CFLAGS) -L$(LIBFTDIR) -lft $(SRCS) -o $(NAME)
+all: $(NAME)
 
-$(LIBFT):
-	$(MAKE) -C $(LIBFTDIR)
+$(NAME): $(OBJ)
+	$(CC) $(CFLAGS) $(SRC) -o $(NAME)
 
-fclean:	clean
-	make fclean -C $(LIBFTDIR)
+%.o: %.c
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+clean:
+	$(RM) $(OBJ)
+
+fclean: clean
 	$(RM) $(NAME)
 
-re:		fclean $(NAME)
+re: fclean all
 
-
-.PHONY:	all clean fclean re bonus
+.PHONY: all clean fclean re
